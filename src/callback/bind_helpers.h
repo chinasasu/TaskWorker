@@ -9,7 +9,6 @@
 #define __BIND_HELPERS_H__
 
 #include <memory>
-#include <xtr1common>
 
 class BindStorageBase;
 
