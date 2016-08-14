@@ -8,7 +8,7 @@
 #ifndef __WIN_UTILS_H__
 #define __WIN_UTILS_H__
 
-#include <windows.h>
+//#include <windows.h>
 
 typedef int(__cdecl *WinProcExceptionFilter)(EXCEPTION_POINTERS* info);
 

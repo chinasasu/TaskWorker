@@ -35,14 +35,14 @@ set(SRC_LIST
 	base/notification/notification_registrar.cpp
 	base/notification/notification_observer.h
 	base/notification/notification_details.h
-	win/win_utils.h
-	win/win_utils.cpp
-	looper.h
-	looper.cpp
+	#win/win_utils.h
+	#win/win_utils.cpp
+	#looper.h
+	#looper.cpp
 	message_queue.h
 	message_queue.cpp
-	message_queue_ui.h
-	message_queue_ui.cpp
+	#message_queue_ui.h
+	#message_queue_ui.cpp
 	pending_task.h
 	pending_task.cpp
 	worker_thread.h
@@ -60,9 +60,9 @@ target_include_directories(base PUBLIC
 set(SRC_UNITTEST
 	#callback/bind_unittest.cpp
 	test_suite.cpp
-	worker_thread_unittest.cpp
-	looper_test.cpp
-	message_queue_ui_test.cpp
+	#worker_thread_unittest.cpp
+	#looper_test.cpp
+	#message_queue_ui_test.cpp
 )
 
 add_definitions(-DUNICODE -D_UNICODE)

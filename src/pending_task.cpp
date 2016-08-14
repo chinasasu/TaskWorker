@@ -25,7 +25,8 @@ TrackedLocation::TrackedLocation()
 
 const void* GetProgramCounter()
 {
-	return _ReturnAddress();
+	//return _ReturnAddress(); //mac
+    return 0;
 }
 
 PendingTask::PendingTask(const TrackedLocation& postedFrom, const Closure& task)
