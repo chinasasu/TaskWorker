@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0)
 
 PROJECT(task_worker)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+
 function(assign_source_group)
     foreach(_source IN ITEMS ${ARGN})
         if (IS_ABSOLUTE "${_source}")
@@ -44,7 +46,7 @@ target_include_directories(base PUBLIC
 
 # base_unittest
 set(SRC_UNITTEST
-	callback/bind_unittest.cpp
+	#callback/bind_unittest.cpp
 	test_suite.cpp
 )
 

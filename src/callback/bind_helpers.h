@@ -9,7 +9,11 @@
 #define __BIND_HELPERS_H__
 
 #include <memory>
-#include <xtr1common>
+#include <functional>
+
+//#include <xtr1common>
+
+
 
 class BindStorageBase;
 
@@ -17,35 +21,39 @@ template <typename T>
 struct IsWeakMethod : public std::false_type {};
 
 template <typename T>
-struct IsWeakMethod<std::weak_ptr<T>> : public std::true_type {};
+struct IsWeakMethod<std::weak_ptr<T> > : public std::true_type {};
 
 
-template <bool IsWeakCall, typename Storage>
+template <bool IsWeakCall, typename Storage, typename R, typename... Args>
 struct InvokerHelper;
 
-template <typename StorageType>
-struct InvokerHelper<false, StorageType>
+template <typename StorageType, typename R, typename... Args>
+struct InvokerHelper<false, StorageType, R, Args...>
 {
-	static void Run(BindStorageBase* base)
-	{
-		StorageType* storage = static_cast<StorageType*>(base);
-
-		storage->_runfunc();
-	}
+    template<typename... UnboundArgs>
+    static R Run(BindStorageBase* base, UnboundArgs... args)
+    {
+        StorageType* storage = static_cast<StorageType*>(base);
+        
+        
+        return storage->_runfunc(args...);
+    }
 };
 
-template <typename StorageType>
-struct InvokerHelper<true, StorageType>
+template <typename StorageType, typename R, typename... Args>
+struct InvokerHelper<true, StorageType, R, Args...>
 {
-	static void Run(BindStorageBase* base)
-	{
-		StorageType* storage = static_cast<StorageType*>(base);
-
-		if (storage->_runner.expired())
-			return;
-
-		storage->_runfunc();
-	}
+    template<typename... UnboundArgs>
+    static R Run(BindStorageBase* base, UnboundArgs... args)
+    {
+        StorageType* storage = static_cast<StorageType*>(base);
+        
+        if (storage->_runner.expired())
+            return static_cast<R>(0);
+        
+        return storage->_runfunc(args...);
+    }
 };
+
 
 #endif /* __BIND_HELPERS_H__ */

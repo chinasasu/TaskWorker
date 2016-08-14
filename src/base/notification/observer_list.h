@@ -63,7 +63,7 @@ class ObserverListThreadSafe;
 
 template <class ObserverType>
 class ObserverListBase
-	: public std::tr1::shared_ptr<ObserverListBase<ObserverType> > {
+	: public std::shared_ptr<ObserverListBase<ObserverType> > {
 public:
 	// Enumeration of which observers are notified.
 	enum NotificationType {
@@ -106,7 +106,7 @@ public:
 		}
 
 	private:
-		std::tr1::weak_ptr<ObserverListBase<ObserverType> > list_;
+		std::weak_ptr<ObserverListBase<ObserverType> > list_;
 		size_t index_;
 		size_t max_index_;
 	};
@@ -157,12 +157,12 @@ public:
 		}
 	}
 
-	std::tr1::weak_ptr<ObserverListBase<ObserverType>> As()
+	std::weak_ptr<ObserverListBase<ObserverType>> As()
 	{
 		if (!owner_.get())
-			owner_ = std::tr1::shared_ptr<ObserverListBase<ObserverType>>(this);
+			owner_ = std::shared_ptr<ObserverListBase<ObserverType>>(this);
 
-		return std::tr1::weak_ptr<ObserverListBase<ObserverType> >(owner_);
+		return std::weak_ptr<ObserverListBase<ObserverType> >(owner_);
 	}
 
 protected:
@@ -183,7 +183,7 @@ private:
 	int notify_depth_;
 	NotificationType type_;
 
-	std::tr1::shared_ptr<ObserverListBase<ObserverType> > owner_;
+	std::shared_ptr<ObserverListBase<ObserverType> > owner_;
 
 	friend class ObserverListBase::Iterator;
 };

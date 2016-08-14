@@ -11,24 +11,26 @@
 #include "callback/bind_helpers.h"
 #include <functional>
 
+
 class BindStorageBase
 {
 public:
 	virtual ~BindStorageBase() {}
 };
 
-template <bool IsMemberMethod, typename RunnerType, typename... Args >
+template <bool IsMemberMethod, typename ReturnType, typename RunnerType, typename... Args >
 struct BindStorage;
 
-template <typename RunnerType, typename... Args>
-struct BindStorage<true, RunnerType, Args...> : public BindStorageBase
+template <typename ReturnType, typename RunnerType, typename... UnboundArgs>
+struct BindStorage<true, ReturnType, RunnerType, UnboundArgs...> : public BindStorageBase
 {
-	typedef std::function<void()> RunnableFunc;
-	typedef InvokerHelper<true, BindStorage> InvokeType;
+	typedef std::function<ReturnType(UnboundArgs...)> RunnableFunc;
+	typedef InvokerHelper<true, BindStorage, ReturnType, UnboundArgs...> InvokeType;
 
 	template<typename T, typename C, typename... Args>
 	BindStorage(T&& method, C&& weakRunner, Args&&... args)
 	{
+    
 		_runfunc = std::bind(method, weakRunner.lock(), args...);
 		_runner = weakRunner;
 	}
@@ -37,16 +39,16 @@ struct BindStorage<true, RunnerType, Args...> : public BindStorageBase
 	RunnerType _runner;
 };
 
-template <typename RunnerType, typename... Args>
-struct BindStorage<false, RunnerType, Args...> : public BindStorageBase
+template <typename ReturnType, typename RunnerType, typename... UnboundArgs>
+struct BindStorage<false, ReturnType, RunnerType, UnboundArgs...> : public BindStorageBase
 {
-	typedef std::function<void()> RunnableFunc;
-	typedef InvokerHelper<false, BindStorage> InvokeType;
+	typedef std::function<ReturnType(UnboundArgs...)> RunnableFunc;
+	typedef InvokerHelper<false, BindStorage, ReturnType, UnboundArgs...> InvokeType;
 
-	template<typename T, typename C, typename... Args>
-	BindStorage(T&& method, C&& runner, Args&&... args)
+	template<typename T, typename... Args>
+	BindStorage(T&& method, Args&&... args)
 	{
-		_runfunc = std::bind(method, runner, args...);
+		_runfunc = std::bind(method, args...);
 	}
 
 	// for lamba or function with no params
@@ -58,6 +60,9 @@ struct BindStorage<false, RunnerType, Args...> : public BindStorageBase
 
 	RunnableFunc _runfunc;
 };
+
+
+
 
 
 #endif /* __BIND_STORAGE_H__ */

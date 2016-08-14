@@ -10,4 +10,8 @@
 
 #include <stdint.h>
 
+#ifndef NULL
+#define NULL 0
+#endif
+
 #endif /* __BASICTYPES_H__ */

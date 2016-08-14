@@ -8,6 +8,7 @@
 #ifndef __STRING_HELPER_H__
 #define __STRING_HELPER_H__
 #include <stdio.h>
+#include <string>
 
 // https://msdn.microsoft.com/en-us/magazine/dn913181.aspx
 template <typename T>
@@ -38,7 +39,7 @@ int StringPrint(char * const buffer,
 		bufferCount,
 		format,
 		Argument(args) ...);
-	assert(-1 != result);
+	//assert(-1 != result);
 	return result;
 }
 
@@ -52,7 +53,7 @@ int StringPrint(wchar_t * const buffer,
 		bufferCount,
 		format,
 		Argument(args) ...);
-	assert(-1 != result);
+	//assert(-1 != result);
 	return result;
 }
 

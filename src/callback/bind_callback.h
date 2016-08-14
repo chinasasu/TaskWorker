@@ -35,34 +35,39 @@ protected:
 template <typename Sig>
 class Callback;
 
-template <typename R>
-class Callback<R(void)> : public CallbackBase
+
+template <typename R, typename... UnboundArgs>
+class Callback<R(UnboundArgs...)> : public CallbackBase
 {
 public:
-	Callback() : CallbackBase(NULL) { }
-
-	template<bool IsWeak, typename RunnerType, typename... Args>
-	Callback(BindStorage<IsWeak, RunnerType, Args...>* bindState)
-		:CallbackBase(bindState)
-	{
-		PolymorphicInvoke invoker = &BindStorage<IsWeak, RunnerType, Args...>::InvokeType::Run;
-
-		invokefunc_ = reinterpret_cast<InvokeFuncStorage>(invoker);
-	}
-
-	R Run()
-	{
-		PolymorphicInvoke f = reinterpret_cast<PolymorphicInvoke>(invokefunc_);
-		return f(bindStorage_.get());
-	}
-
-	bool Equals(const Callback& other) const 
-	{
-		return CallbackBase::Equals(other);
-	}
-
+    Callback() : CallbackBase(NULL) { }
+    
+    template<bool IsWeak, typename RunnerType>
+    Callback(BindStorage<IsWeak, R, RunnerType, UnboundArgs...>* bindState)
+    :CallbackBase(bindState)
+    {
+        PolymorphicInvoke invoker = &BindStorage<IsWeak, R, RunnerType, UnboundArgs...>::InvokeType::Run;
+        
+        invokefunc_ = reinterpret_cast<InvokeFuncStorage>(invoker);
+    }
+    
+    R Run(UnboundArgs... args)
+    {
+        PolymorphicInvoke f = reinterpret_cast<PolymorphicInvoke>(invokefunc_);
+        return f(bindStorage_.get(), args...);
+    }
+    
+    bool Equals(const Callback& other) const
+    {
+        return CallbackBase::Equals(other);
+    }
+    
 private:
-	typedef R(*PolymorphicInvoke)(BindStorageBase*);
+    typedef R(*PolymorphicInvoke)(BindStorageBase*, UnboundArgs...);
 };
+
+
+
+
 
 #endif /* __BIND_CALLBACK_H__ */

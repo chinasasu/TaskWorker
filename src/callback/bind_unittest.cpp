@@ -22,11 +22,13 @@ public:
 // 	static int IntFunc0(void) { return static_func_mock_ptr->IntMethod0(); }
 };
 
+
+
 static int SumValue = 0;
 
 void Sum(int a, int b, int* outSumValue)
 {
-	*outSumValue = a + b;
+    *outSumValue = a + b;
 }
 
 class Foo
@@ -80,8 +82,8 @@ TEST_F(BindTest, ArityTest)
 
 	EXPECT_EQ(48, sum);
 
-	std::string ss = "中文";
-	std::string aa = StringPrintf("%d, %s", 0, u8"中文");
+	std::string ss = "";
+	std::string aa = StringPrintf("%d, %s", 0, u8"");
 
 
 	NotificationService* service = NotificationService::current();
