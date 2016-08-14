@@ -11,9 +11,6 @@
 #include <memory>
 #include <functional>
 
-//#include <xtr1common>
-
-
 
 class BindStorageBase;
 

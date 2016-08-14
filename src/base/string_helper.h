@@ -9,6 +9,8 @@
 #define __STRING_HELPER_H__
 #include <stdio.h>
 #include <string>
+#include <wchar.h>
+#include <assert.h>
 
 // https://msdn.microsoft.com/en-us/magazine/dn913181.aspx
 template <typename T>
@@ -49,6 +51,9 @@ int StringPrint(wchar_t * const buffer,
 	wchar_t const * const format,
 	Args const & ... args) noexcept
 {
+	// http://www.cplusplus.com/reference/cwchar/swprintf/?kw=swprintf
+	// swprintf与snprintf的返回值含义不同，当buffer不足时，swprintf可能返回-1,snprintf返回所需要的buffer长度
+	// buffer为空,则返回所需要的buffer长度(TODO 目前行为如此，不确定是否为编译器确定行为)
 	int const result = swprintf(buffer,
 		bufferCount,
 		format,
@@ -62,18 +67,14 @@ void Format(std::basic_string<T> & buffer,
 	T const * const format,
 	Args const & ... args)
 {
-	size_t const size = StringPrint(&buffer[0],
-		buffer.size() + 1,
+	const int size = StringPrint(nullptr,
+		0,
 		format,
 		args ...);
-	if (size > buffer.size())
+	if (size > 0)
 	{
 		buffer.resize(size);
 		StringPrint(&buffer[0], buffer.size() + 1, format, args ...);
-	}
-	else if (size < buffer.size())
-	{
-		buffer.resize(size);
 	}
 }
 
@@ -85,5 +86,12 @@ std::string StringPrintf(const char* format, Args const &... args)
 	return result;
 }
 
+template <typename ... Args>
+std::wstring StringPrintf(const wchar_t* format, Args const &... args)
+{
+	std::wstring result;
+	Format(result, format, args...);
+	return result;
+}
 
 #endif /* __STRING_HELPER_H__ */
