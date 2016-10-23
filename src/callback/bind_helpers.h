@@ -32,7 +32,6 @@ struct InvokerHelper<false, StorageType, R, Args...>
     {
         StorageType* storage = static_cast<StorageType*>(base);
         
-        
         return storage->_runfunc(args...);
     }
 };

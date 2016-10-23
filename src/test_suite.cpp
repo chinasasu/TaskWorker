@@ -22,9 +22,10 @@ bool processed = false;
 class Foo
 {
 public:
-    int Func();
+    int Func(){ return 0;}
     void Func1(int a){}
     void Func2(int a, char b){}
+    void Func3(std::string a, int b){}
 };
 
 
@@ -63,6 +64,13 @@ bool TestBool()
     return true;
 }
 
+bool TestBool2(int a, std::string b)
+{
+    return true;
+}
+
+
+
 int main(int argc, char** argv)
 {
     //testing::InitGoogleTest(&argc, argv);
@@ -81,22 +89,46 @@ int main(int argc, char** argv)
     
     ///////
     
-    Callback<bool(void)> cb2 = Bind(&TestBool);
+    std::shared_ptr<Foo> sharedFoo(new Foo);
+    std::weak_ptr<Foo> weakFoo(sharedFoo);
+
+    std::function<void(int)> wwf = std::bind(&Foo::Func1, sharedFoo, std::placeholders::_1);
+    
+    
+    std::function<void(void)> ssss = std::bind([]{ int a =10;});
+    
+    
+    
+    //wwf(3);
+    
+    
+   // Callback<bool(void)> cb2 = Bind(&TestBool);
 //    
-    Callback<void(void)> cbbb =  Bind(&SumDemo, 3,'d',&sum);
+//    Callback<void(void)> cbbb =  Bind(&SumDemo, 3,'d',&sum);
    
-    Callback<void(int,char)> cbbb2 =  Bind(&SumDemo, std::placeholders::_1, std::placeholders::_2,&sum);
+    //Callback<void(int,char)> cbbb2 =  Bind(&SumDemo, std::placeholders::_1, std::placeholders::_2,&sum);
     
     
     Foo foo;
     
-    auto cl = Bind(&Foo::Func1, &foo,std::placeholders::_1);
+    auto c0 = Bind(&Foo::Func, &foo);
+    auto cl = Bind(&Foo::Func1, &foo);
+    auto c2 = Bind(&Foo::Func1, weakFoo, 1);
+    auto c3 = Bind(&Foo::Func3, &foo);
+    auto c33 = Bind(&Foo::Func3, &foo, "dfs");
+    auto c4 = Bind(&Foo::Func3, weakFoo);
     
+    auto c5 = Bind(&TestBool2, 1);
     
-    std::function<void(char)> df= std::bind(&Foo::Func2, &foo, 2, std::placeholders::_1);
+    //c5.Run("d");
+    //auto c3332 = Bind([]{ int a =10;});
+    
+    //cl.Run(2);
+    
+   // std::function<void(char)> df= std::bind(&Foo::Func2, &foo, 2, std::placeholders::_1);
 
     
-     auto cbb3 =  Bind(&SumDemo, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+     //auto cbb3 =  Bind(&SumDemo, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
     
     //cbbb.Run(0);
     

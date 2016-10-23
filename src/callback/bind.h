@@ -11,6 +11,7 @@
 #include "callback/bind_storage.h"
 #include "callback/bind_callback.h"
 #include <type_traits>
+#include <memory>
 /*
 Useage:
 	
@@ -76,7 +77,56 @@ c. 弱指针
 //	return Callback<void(void)>(new BindStorage<false,void, void, void>(function, args...));
 //}
 
-//
+
+template <bool IsMethod, typename... Args>
+struct IsWeakMethodEx : public std::false_type {};
+
+
+template <typename T, typename... Args>
+struct IsWeakMethodEx<true, std::weak_ptr<T>, Args...> : public std::true_type {};
+
+template <typename T, typename... Args>
+struct IsWeakMethodEx<true, std::weak_ptr<T>&, Args...> : public std::true_type {};
+
+template <typename T, typename... Args>
+struct IsWeakMethodEx<true, const std::weak_ptr<T>&, Args...> : public std::true_type {};
+
+
+template <bool IsWeakCall, typename... Args>
+struct RunnerType
+{
+    using type = void;
+};
+
+template <typename T, typename... Args>
+struct RunnerType<true, T, Args...>
+{
+    using type = T;
+};
+
+
+template <bool IsMethod, typename... Args>
+struct BoundArgsNum;
+
+template<typename T, typename... Args>
+struct BoundArgsNum<true, T, Args...>
+{
+    static constexpr std::size_t size = sizeof...(Args);
+};
+
+
+template<typename... Args>
+struct BoundArgsNum<false, Args...>
+{
+    static constexpr std::size_t size = sizeof...(Args);
+};
+
+
+/*
+ 1. 分离绑定参数和运行时参数
+ 2. 生成std::function变量存储
+ 3. Run时绑定运行时参数
+*/
 
 // https://functionalcpp.wordpress.com/2013/08/05/function-traits/
 
@@ -110,6 +160,10 @@ template<class C, class R, class... Args>
 struct function_traits<R(C::*)(Args...)> : public function_traits<R(C&,Args...)>
 {};
 
+template<class C, class R, class T, class... Args>
+struct function_traits<R(C::*)(std::weak_ptr<T>,Args...)> : public function_traits<R(C&,T*, Args...)>
+{};
+
 // const member function pointer
 template<class C, class R, class... Args>
 struct function_traits<R(C::*)(Args...) const> : public function_traits<R(C&,Args...)>
@@ -135,6 +189,34 @@ struct types_link<T, types<U...>>
 {
     using type = types<T, U...>;
 };
+
+template <typename... T, typename U>
+struct types_link<types<T...>, U>
+{
+    using type = types<T..., U>;
+};
+
+template<int RestI, typename ArgsTuple, typename... P>
+struct UnboundArgType
+{
+    static constexpr std::size_t size = std::tuple_size<ArgsTuple>::value;
+    
+    using type_this = typename std::tuple_element<size - RestI, ArgsTuple>::type;
+    using type_list = typename types_link<P...,type_this>::type;
+    
+    using type = typename UnboundArgType<RestI - 1, ArgsTuple, type_list>::type;
+};
+
+
+template<typename ArgsTuple, typename... P>
+struct UnboundArgType<0,ArgsTuple, P...>
+{
+    
+    using type = typename std::conditional<(sizeof...(P) == 0), types<>, types<P...>>::type ;
+};
+
+template<typename ArgsTuple, typename... P>
+struct UnboundArgType<0,ArgsTuple, types<P...>> : public UnboundArgType<0,ArgsTuple, P...>{};
 
 
 template<int N, typename T, typename U, typename... P>
@@ -169,6 +251,22 @@ template<typename T, typename U, typename... P>
 struct unbound_type<0, T, U, types<P...>> : unbound_type<0, T, U, P...> {};
 
 
+template <bool IsWeakCall, typename F,typename Runner, typename... UnboundArgs>
+struct make_callback_ex;
+
+template <bool IsWeakCall, typename F, typename Runner,typename... UnboundArgs>
+struct make_callback_ex<IsWeakCall, F, Runner, types<UnboundArgs...>>
+{
+    
+    using return_type = typename function_traits<F>::return_type;
+
+    using type = Callback<return_type(UnboundArgs...)>;
+    
+    using storage_type = BindStorage<IsWeakCall, return_type, Runner, UnboundArgs... >;
+};
+
+
+
 template <typename R, typename... UnboundArgs>
 struct make_callback;
 
@@ -179,6 +277,14 @@ struct make_callback<R, types<UnboundArgs...>>
     using type = Callback<R(UnboundArgs...)>;
     
     using storage_type = BindStorage<false, R, void, UnboundArgs... >;
+};
+
+template <typename R>
+struct make_callback<R, types<void>>
+{
+    using type = Callback<R(void)>;
+    
+    using storage_type = BindStorage<false, R, void >;
 };
 
 
@@ -194,63 +300,28 @@ struct UnboundArgsNum<Last>
     enum{ value = (std::is_placeholder<Last>::value > 0 ? 1 : 0) };
 };
 
-template<int N, typename Arg0, typename... Args>
-struct bound_tuple
+template<typename F, typename... Args>
+decltype(auto) Bind(F&& function, const Args&... args)
 {
-    using type = typename std::conditional<(N == (sizeof...(Args) + 1)),
-    typename std::tuple<Arg0, Args...>,
-    typename std::tuple<Args...> >::type ;
-};
-
-
-// 完全绑定运行时不再需要参数
-template<typename F, typename... Args,
-typename std::enable_if<((sizeof...(Args) != 0) && (UnboundArgsNum<Args...>::value == 0)),int>::type* = nullptr >
-decltype(auto) Bind(F function, Args... args)
-{
-    using return_type = typename function_traits<F>::return_type;
+    using FuncArgsTuple = typename function_traits<F>::tuple_type;
     
-    using storage_type = BindStorage<false, return_type, void >;
+    using BoundArgsNumType = BoundArgsNum<std::is_member_function_pointer<F>::value, Args...> ;
     
-    return Callback<return_type(void)>(new storage_type(function, args...));
+    // if method set 1
+    static constexpr std::size_t MethodRunnerArg = std::is_member_function_pointer<F>::value ? 1 : 0;
+    
+    using Unbound = typename UnboundArgType<function_traits<F>::arity - BoundArgsNumType::size - MethodRunnerArg,FuncArgsTuple>::type;
+    
+    using IsWeakCall = IsWeakMethodEx<std::is_member_function_pointer<F>::value, Args...>;
+    using MethodRunner = typename RunnerType<std::is_member_function_pointer<F>::value, Args...>::type;
+    
+    using callback_type = typename make_callback_ex<IsWeakCall::value, F, MethodRunner,Unbound>::type;
+    using st_type = typename make_callback_ex<IsWeakCall::value, F,MethodRunner,Unbound>::storage_type;
+    
+    return callback_type(new st_type(function, args...));
 }
-
-// 完全没有参数绑定
-template<typename F, typename... Args,
-typename std::enable_if<((sizeof...(Args) == 0)),int>::type* = nullptr >
-decltype(auto) Bind(F function, Args... args)
-{
-    using return_type = typename function_traits<F>::return_type;
-    
-    using storage_type = BindStorage<false, return_type, void >;
-    
-    return Callback<return_type(void)>(new storage_type(function, args...));
-}
-
-// 运行时需要参数
-template<typename F, typename... Args,
-typename std::enable_if<(UnboundArgsNum<Args...>::value > 0),int>::type* = nullptr >
-decltype(auto) Bind(F&& function, Args... args)
-{
-    using return_type = typename function_traits<F>::return_type;
-    using bound_type = typename bound_tuple<function_traits<F>::arity, Args...>::type;
-    
-    using unbound_type = typename unbound_type<function_traits<F>::arity,
-    typename function_traits<F>::tuple_type,
-    bound_type>::type;
-    
-    using call_back = typename make_callback<return_type,unbound_type>::type;
-    
-    using storage_type = typename make_callback<return_type, unbound_type>::storage_type;
-    
-    return call_back(new storage_type(function, args...));
-}
-
 
 typedef Callback<void(void)> Closure;
-
-//typedef Callback<bool(void)> BoolCallback;
-
 
 
 #endif /* __BIND_H__ */
