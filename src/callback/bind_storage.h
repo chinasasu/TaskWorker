@@ -8,8 +8,9 @@
 #ifndef __BIND_STORAGE_H__
 #define __BIND_STORAGE_H__
 
-#include "callback/bind_helpers.h"
 #include <functional>
+
+#include "callback/bind_helpers.h"
 
 
 // http://stackoverflow.com/questions/26129933/bind-to-function-with-an-unknown-number-of-arguments-in-c

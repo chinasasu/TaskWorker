@@ -9,6 +9,7 @@
 #define __MESSAGE_QUEUE_H__
 
 #include <mutex>
+
 #include "callback/bind.h"
 #include "pending_task.h"
 

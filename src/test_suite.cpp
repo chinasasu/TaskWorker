@@ -25,7 +25,10 @@ public:
     int Func(){ return 0;}
     void Func1(int a){}
     void Func2(int a, char b){}
-    void Func3(std::string a, int b){}
+    void Func3(std::string a, int b)
+    {
+        int afda;
+    }
 };
 
 
@@ -118,7 +121,18 @@ int main(int argc, char** argv)
     auto c33 = Bind(&Foo::Func3, &foo, "dfs");
     auto c4 = Bind(&Foo::Func3, weakFoo);
     
+    c4.Run("a", 3);
+    
     auto c5 = Bind(&TestBool2, 1);
+    
+    c5.Run("afd");
+    
+    int aaaa = 0;
+    auto c6 = Bind([&]() { return "akj";});
+    
+    auto c7 = Bind([]() { return "akj";});
+    
+    //c6.Run((lambda) &args, <#int args#>);
     
     //c5.Run("d");
     //auto c3332 = Bind([]{ int a =10;});

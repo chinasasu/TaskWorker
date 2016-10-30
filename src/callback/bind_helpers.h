@@ -11,9 +11,6 @@
 #include <memory>
 #include <functional>
 
-
-class BindStorageBase;
-
 template <bool IsMethod, typename... Args>
 struct IsWeakMethod : public std::false_type {};
 
@@ -26,40 +23,11 @@ struct IsWeakMethod<true, std::weak_ptr<T>&, Args...> : public std::true_type {}
 template <typename T, typename... Args>
 struct IsWeakMethod<true, const std::weak_ptr<T>&, Args...> : public std::true_type {};
 
-template <bool IsMethod, typename... Args>
-struct MethodRunnerTraits
-{
-	using type = void;
-};
-
-template <typename T, typename... Args>
-struct MethodRunnerTraits<true, T, Args...>
-{
-	using type = T;
-};
-
-
-template <bool IsMethod, typename... Args>
-struct BoundArgsSize;
-
-template<typename T, typename... Args>
-struct BoundArgsSize<true, T, Args...>
-{
-	static constexpr std::size_t size = sizeof...(Args);
-};
-
-template<typename... Args>
-struct BoundArgsSize<false, Args...>
-{
-	static constexpr std::size_t size = sizeof...(Args);
-};
-
-
 /*
-1. 分离绑定参数和运行时参数
-2. 生成std::function变量存储
-3. Run时绑定运行时参数
-*/
+ 1. 分离绑定参数和运行时参数
+ 2. 生成std::function变量存储
+ 3. Run时绑定运行时参数
+ */
 
 // https://functionalcpp.wordpress.com/2013/08/05/function-traits/
 
@@ -74,18 +42,18 @@ struct function_traits<R(*)(Args...)> : public function_traits<R(Args...)>
 template<class R, class... Args>
 struct function_traits<R(Args...)>
 {
-	using return_type = R;
-
-	static constexpr std::size_t arity = sizeof...(Args);
-
-	template <std::size_t N>
-	struct argument
-	{
-		static_assert(N < arity, "error: invalid parameter index.");
-		using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
-	};
-
-	using tuple_type = std::tuple<Args...>;
+    using return_type = R;
+    
+    static constexpr std::size_t arity = sizeof...(Args);
+    
+    template <std::size_t N>
+    struct argument
+    {
+        static_assert(N < arity, "error: invalid parameter index.");
+        using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+    };
+    
+    using tuple_type = std::tuple<Args...>;
 };
 
 // member function pointer
@@ -107,6 +75,31 @@ struct function_traits<R(C::*)(Args...) const> : public function_traits<R(C&, Ar
 template<class C, class R>
 struct function_traits<R(C::*)> : public function_traits<R(C&)>
 {};
+
+// http://stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
+// for lamba
+template <typename T>
+struct function_traits : public function_traits<decltype(&T::operator())>
+{};
+
+
+// 提取成员方法的类类型
+template <bool IsMethod, typename... Args>
+struct RunnerTraits
+{
+    static constexpr std::size_t BoundSize = sizeof...(Args);
+        
+	using RunnerType = void;
+};
+
+template <typename T, typename... Args>
+struct RunnerTraits<true, T, Args...>
+{
+    static constexpr std::size_t BoundSize = sizeof...(Args);
+    
+	using RunnerType = T;
+};
+
 
 
 template <typename...>
@@ -131,24 +124,51 @@ struct TypesLink<TypeList<T...>, U>
 };
 
 template<int RestI, typename ArgsTuple, typename... P>
-struct UnboundTypeTraits
+struct TypeListTraits
 {
 	static constexpr std::size_t ArgSize = std::tuple_size<ArgsTuple>::value;
 
 	using type_this = typename std::tuple_element<ArgSize - RestI, ArgsTuple>::type;
 	using type_list = typename TypesLink<P..., type_this>::type;
 
-	using type = typename UnboundTypeTraits<RestI - 1, ArgsTuple, type_list>::type;
+	using type = typename TypeListTraits<RestI - 1, ArgsTuple, type_list>::type;
 };
 
 template<typename ArgsTuple, typename... P>
-struct UnboundTypeTraits<0, ArgsTuple, P...>
+struct TypeListTraits<0, ArgsTuple, P...>
 {
 	using type = typename std::conditional<(sizeof...(P) == 0), TypeList<>, TypeList<P...>>::type;
 };
 
 template<typename ArgsTuple, typename... P>
-struct UnboundTypeTraits<0, ArgsTuple, TypeList<P...>> : public UnboundTypeTraits<0, ArgsTuple, P...> {};
+struct TypeListTraits<0, ArgsTuple, TypeList<P...>> : public TypeListTraits<0, ArgsTuple, P...> {};
+
+
+// 提取示绑定的参数类型
+// UnboundTypeTraits<>::Type 是 Types<...> 类型
+template <typename F, typename... Args>
+struct CallbackParamTraits
+{
+private:
+    
+    static constexpr bool IsMemberMethod = std::is_member_function_pointer<F>::value;
+    
+    static constexpr std::size_t BoundSize =  RunnerTraits<IsMemberMethod, Args...>::BoundSize;
+    
+    // 未绑定的参数个数 = 函数参数个数 - 绑定的参数个数 - 成员函数指针参数
+    static constexpr std::size_t UnBoundTypeSize =
+        function_traits<F>::arity - BoundSize - (IsMemberMethod ? 1 : 0);
+    
+public:
+    
+    using UnboundTypeList = typename TypeListTraits<UnBoundTypeSize, typename function_traits<F>::tuple_type>::type;
+    
+    using RunnerType = typename RunnerTraits<IsMemberMethod, Args...>::RunnerType;
+    
+    using IsWeakCall = IsWeakMethod<IsMemberMethod, Args...>;
+};
+
+class BindStorageBase;
 
 template <bool IsWeakCall, typename Storage, typename R, typename... Args>
 struct InvokerHelper;
