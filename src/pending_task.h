@@ -8,9 +8,10 @@
 #ifndef __PENDING_TASK_H__
 #define __PENDING_TASK_H__
 
-#include "callback/bind.h"
 #include <chrono>
 #include <queue>
+
+#include "callback/bind.h"
 
 class TrackedLocation
 {
