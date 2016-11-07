@@ -58,7 +58,7 @@ target_include_directories(base PUBLIC
 
 # base_unittest
 set(SRC_UNITTEST
-	#callback/bind_unittest.cpp
+	callback/bind_unittest.cpp
 	test_suite.cpp
 	#worker_thread_unittest.cpp
 	#looper_test.cpp
