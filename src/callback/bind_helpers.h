@@ -11,18 +11,6 @@
 #include <memory>
 #include <functional>
 
-template <bool IsMethod, typename... Args>
-struct IsWeakMethod : public std::false_type {};
-
-template <typename T, typename... Args>
-struct IsWeakMethod<true, std::weak_ptr<T>, Args...> : public std::true_type {};
-
-template <typename T, typename... Args>
-struct IsWeakMethod<true, std::weak_ptr<T>&, Args...> : public std::true_type {};
-
-template <typename T, typename... Args>
-struct IsWeakMethod<true, const std::weak_ptr<T>&, Args...> : public std::true_type {};
-
 /*
  1. 分离绑定参数和运行时参数
  2. 生成std::function变量存储
@@ -30,58 +18,74 @@ struct IsWeakMethod<true, const std::weak_ptr<T>&, Args...> : public std::true_t
  */
 
 // https://functionalcpp.wordpress.com/2013/08/05/function-traits/
+// http://stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
+// for lamba
 
 template<class F>
 struct function_traits;
+
+// lamba
+template <typename T>
+struct function_traits
+	: public function_traits<decltype(&T::operator())>
+{};
+
+
+// const member function pointer
+template <typename ClassType, typename ReturnType, typename... Args>
+struct function_traits<ReturnType(ClassType::*)(Args...) const>
+	: public function_traits<ReturnType(Args...)>
+{
+	typedef const ClassType& owner_type;
+};
+
+// member function pointer
+template <typename ClassType, typename ReturnType, typename... Args>
+struct function_traits<ReturnType(ClassType::*)(Args...)>
+	: public function_traits<ReturnType(Args...)>
+{
+	typedef ClassType& owner_type;
+};
 
 // function pointer
 template<class R, class... Args>
 struct function_traits<R(*)(Args...)> : public function_traits<R(Args...)>
 {};
+// For generic types, directly use the result of the signature of its 'operator()'
 
-template<class R, class... Args>
-struct function_traits<R(Args...)>
+template <typename ReturnType, typename... Args>
+struct function_traits<ReturnType(Args...)>
 {
-    using return_type = R;
-    
-    static constexpr std::size_t arity = sizeof...(Args);
-    
-    template <std::size_t N>
-    struct argument
-    {
-        static_assert(N < arity, "error: invalid parameter index.");
-        using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
-    };
-    
-    using tuple_type = std::tuple<Args...>;
+	/**
+	.. type:: type result_type
+	The type returned by calling an instance of the function object type *F*.
+	*/
+	typedef ReturnType return_type;
+
+	/**
+	.. type:: type function_type
+	The function type (``R(T...)``).
+	*/
+	typedef ReturnType function_type(Args...);
+
+	/**
+	.. data:: static const size_t arity
+	Number of arguments the function object will take.
+	*/
+	enum { arity = sizeof...(Args) };
+
+	/**
+	.. type:: type arg<n>::type
+	The type of the *n*-th argument.
+	*/
+	template <size_t i>
+	struct argument
+	{
+		typedef typename std::tuple_element<i, std::tuple<Args...>>::type type;
+	};
+
+	using tuple_type = std::tuple<Args...>;
 };
-
-// member function pointer
-template<class C, class R, class... Args>
-struct function_traits<R(C::*)(Args...)> : public function_traits<R(C&, Args...)>
-{};
-
-// weakptr member function pointer
-template<class C, class R, class T, class... Args>
-struct function_traits<R(C::*)(std::weak_ptr<T>, Args...)> : public function_traits<R(C&, T*, Args...)>
-{};
-
-// const member function pointer
-template<class C, class R, class... Args>
-struct function_traits<R(C::*)(Args...) const> : public function_traits<R(C&, Args...)>
-{};
-
-// member object pointer
-template<class C, class R>
-struct function_traits<R(C::*)> : public function_traits<R(C&)>
-{};
-
-// http://stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
-// for lamba
-template <typename T>
-struct function_traits : public function_traits<decltype(&T::operator())>
-{};
-
 
 // 提取成员方法的类类型
 template <bool IsMethod, typename... Args>
@@ -90,6 +94,7 @@ struct RunnerTraits
     static constexpr std::size_t BoundSize = sizeof...(Args);
         
 	using RunnerType = void;
+	using RunnableTuple = std::tuple<Args...>;
 };
 
 template <typename T, typename... Args>
@@ -98,6 +103,7 @@ struct RunnerTraits<true, T, Args...>
     static constexpr std::size_t BoundSize = sizeof...(Args);
     
 	using RunnerType = T;
+	using RunnableTuple = std::tuple<Args...>;
 };
 
 
@@ -144,61 +150,95 @@ template<typename ArgsTuple, typename... P>
 struct TypeListTraits<0, ArgsTuple, TypeList<P...>> : public TypeListTraits<0, ArgsTuple, P...> {};
 
 
-// 提取示绑定的参数类型
-// UnboundTypeTraits<>::Type 是 Types<...> 类型
-template <typename F, typename... Args>
-struct CallbackParamTraits
-{
-private:
-    
-    static constexpr bool IsMemberMethod = std::is_member_function_pointer<F>::value;
-    
-    static constexpr std::size_t BoundSize =  RunnerTraits<IsMemberMethod, Args...>::BoundSize;
-    
-    // 未绑定的参数个数 = 函数参数个数 - 绑定的参数个数 - 成员函数指针参数
-    static constexpr std::size_t UnBoundTypeSize =
-        function_traits<F>::arity - BoundSize - (IsMemberMethod ? 1 : 0);
-    
-public:
-    
-    using UnboundTypeList = typename TypeListTraits<UnBoundTypeSize, typename function_traits<F>::tuple_type>::type;
-    
-    using RunnerType = typename RunnerTraits<IsMemberMethod, Args...>::RunnerType;
-    
-    using IsWeakCall = IsWeakMethod<IsMemberMethod, Args...>;
-};
-
 class BindStorageBase;
 
-template <bool IsWeakCall, typename Storage, typename R, typename... Args>
-struct InvokerHelper;
+// pure ptr
+template <bool IsMethodCall, typename Runner, typename R>
+struct InvokeWrapper
+{
+	template<typename Runnable, typename BoundTuple, std::size_t... Is, typename... Args>
+	static R Invoke(Runner runner, Runnable runable, BoundTuple boundArgs, std::index_sequence<Is...>, Args... args)
+	{
+		// https://blogs.msdn.microsoft.com/the1/2004/08/06/using-c-member-function-pointers/
+		return (runner->*runable)(std::get<Is>(boundArgs)..., args...);
+	}
+};
 
-template <typename StorageType, typename R, typename... Args>
-struct InvokerHelper<false, StorageType, R, Args...>
+// sharedptr
+template <typename Runner, typename R>
+struct InvokeWrapper<true, std::shared_ptr<Runner>, R>
+{
+	template<typename Runnable, typename BoundTuple, std::size_t... Is, typename... Args>
+	static R Invoke(std::shared_ptr<Runner> runner, Runnable runable, BoundTuple boundArgs, std::index_sequence<Is...>, Args... args)
+	{
+		return (runner.get()->*runable)(std::get<Is>(boundArgs)..., args...);
+	}
+};
+
+// weakptr
+template <typename Runner, typename R>
+struct InvokeWrapper<true, std::weak_ptr<Runner>, R>
+{
+	template<typename Runnable, typename BoundTuple, std::size_t... Is, typename... Args>
+	static R Invoke(std::weak_ptr<Runner> runner, Runnable runable, BoundTuple boundArgs, std::index_sequence<Is...>, Args... args)
+	{
+		if (runner.expired())
+			return static_cast<R>(0);
+
+		return (runner.lock().get()->*runable)(std::get<Is>(boundArgs)..., args...);
+	}
+};
+
+// global function
+template <typename Runner, typename R>
+struct InvokeWrapper<false, Runner, R>
+{
+	template<typename Runnable, typename BoundTuple, std::size_t... Is, typename... Args>
+	static R Invoke(Runnable runable, BoundTuple boundArgs, std::index_sequence<Is...>, Args... args)
+	{
+		return runable(std::get<Is>(boundArgs)..., args...);
+	}
+};
+
+
+template <bool IsMethodCall, typename Storage, typename R>
+struct InvokeHelper;
+
+// 成员函数
+template <typename StorageType, typename R>
+struct InvokeHelper<true, StorageType, R>
 {
     template<typename... UnboundArgs>
     static R Run(BindStorageBase* base, UnboundArgs... args)
     {
         StorageType* storage = static_cast<StorageType*>(base);
-        
-        return storage->_runfunc(args...);
-    }
+		typedef InvokeWrapper<true, StorageType::RunnerType, R> InvokeType;
+
+		constexpr auto tuple_size = std::tuple_size<decltype(storage->bound_args_)>::value;
+		return InvokeType::Invoke(storage->runner_, 
+								storage->runnable_,
+								storage->bound_args_,
+								std::make_index_sequence<tuple_size>(),
+								args...);
+	}
 };
 
-template <typename StorageType, typename R, typename... Args>
-struct InvokerHelper<true, StorageType, R, Args...>
+// 静态或全局函数
+template <typename StorageType, typename R>
+struct InvokeHelper<false, StorageType, R>
 {
-    template<typename... UnboundArgs>
-    static R Run(BindStorageBase* base, UnboundArgs... args)
-    {
-        StorageType* storage = static_cast<StorageType*>(base);
-        
-        if (storage->_runner.expired())
-            return static_cast<R>(0);
-        
-        return storage->_runfunc(args...);
-    }
-};
+	template<typename... UnboundArgs>
+	static R Run(BindStorageBase* base, UnboundArgs... args)
+	{
+		StorageType* storage = static_cast<StorageType*>(base);
+		typedef InvokeWrapper<false, StorageType::RunnerType, R> InvokeType;
 
+		constexpr auto tuple_size = std::tuple_size<decltype(storage->bound_args_)>::value;
+		return InvokeType::Invoke(storage->runnable_,
+			storage->bound_args_,
+			std::make_index_sequence<tuple_size>(),
+			args...);
+	}
+};
 
 #endif /* __BIND_HELPERS_H__ */

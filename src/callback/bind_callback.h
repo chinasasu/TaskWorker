@@ -40,13 +40,14 @@ template <typename R, typename... UnboundArgs>
 class Callback<R(UnboundArgs...)> : public CallbackBase
 {
 public:
+
     Callback() : CallbackBase(NULL) { }
     
-    template<bool IsWeak, typename RunnerType>
-    Callback(BindStorage<IsWeak, R, RunnerType, UnboundArgs...>* bindState)
+    template<bool IsMethod, typename Runnable, typename BoundArgsTuple, typename RunnerType>
+    Callback(BindStorage<IsMethod, R, Runnable, RunnerType, BoundArgsTuple>* bindState)
     :CallbackBase(bindState)
     {
-        PolymorphicInvoke invoker = &BindStorage<IsWeak, R, RunnerType, UnboundArgs...>::InvokeType::Run;
+        PolymorphicInvoke invoker = &BindStorage<IsMethod, R, Runnable, RunnerType, BoundArgsTuple>::InvokeType::Run;
         
         invokefunc_ = reinterpret_cast<InvokeFuncStorage>(invoker);
     }
@@ -65,9 +66,5 @@ public:
 private:
     typedef R(*PolymorphicInvoke)(BindStorageBase*, UnboundArgs...);
 };
-
-
-
-
 
 #endif /* __BIND_CALLBACK_H__ */

@@ -44,6 +44,12 @@ struct make_int_parameter_pack<0, Is...> : int_parameter_pack<Is...>
     
 };
 
+template <typename T>
+struct IsWeakRunner : public std::false_type {};
+
+template <typename T>
+struct IsWeakRunner<std::weak_ptr<T>> : public std::true_type {};
+
 
 class BindStorageBase
 {
@@ -51,66 +57,43 @@ public:
 	virtual ~BindStorageBase() {}
 };
 
-template <bool IsMemberMethod, typename ReturnType, typename RunnerType, class... Args >
+template <bool IsMemberMethod, typename ReturnType, typename Runnable, typename RunnerType, typename BoundArgsTuple >
 struct BindStorage;
 
-template <typename ReturnType, typename RunnerType, typename... UnboundArgs>
-struct BindStorage<true, ReturnType, RunnerType, UnboundArgs...> : public BindStorageBase
+template <typename ReturnType, typename Runnable, typename RunnerType, typename BoundArgsTuple>
+struct BindStorage<true, ReturnType, Runnable, RunnerType, BoundArgsTuple> : public BindStorageBase
 {
-	typedef std::function<ReturnType(UnboundArgs...)> RunnableFunc;
-	typedef InvokerHelper<true, BindStorage, ReturnType, UnboundArgs...> InvokeType;
-
-	template<typename T, typename C, typename... Args>
-	BindStorage(T&& method, C&& weakRunner, Args&&... args)
+	typedef InvokeHelper<true, BindStorage, ReturnType> InvokeType;
+	typedef RunnerType RunnerType;
+	
+	template<typename Runnable, typename RunnerType, typename... Args>
+	BindStorage(Runnable runnable, RunnerType&& runner, Args&&... args)
+		:runnable_(runnable), runner_(runner)
 	{
-        MakeStore(make_int_parameter_pack<sizeof...(UnboundArgs)>(), method, weakRunner.lock(), args...);
-		_runner = weakRunner;
+		bound_args_ = std::make_tuple(args...);
 	}
 
-	RunnableFunc _runfunc;
-	RunnerType _runner;
-    
-private:
-    
-    template<int... Is, typename T, typename... Args>
-    void MakeStore(int_parameter_pack<Is...>, T&& method, Args&&... args)
-    {
-        _runfunc = std::bind(method, args..., std::custom_placeholder<Is>()...);
-        
-    }
+	Runnable runnable_;
+	RunnerType runner_;
 
+	BoundArgsTuple bound_args_;
 };
 
-template <typename ReturnType, typename RunnerType, typename... UnboundArgs>
-struct BindStorage<false, ReturnType, RunnerType, UnboundArgs...> : public BindStorageBase
+template <typename ReturnType, typename Runnable, typename RunnerType, typename BoundArgsTuple>
+struct BindStorage<false, ReturnType, Runnable, RunnerType, BoundArgsTuple> : public BindStorageBase
 {
-	typedef std::function<ReturnType(UnboundArgs...)> RunnableFunc;
-	typedef InvokerHelper<false, BindStorage, ReturnType, UnboundArgs...> InvokeType;
-    
-	template<typename T, typename... Args>
-	BindStorage(T&& method, Args&&... args)
+	typedef InvokeHelper<false, BindStorage, ReturnType> InvokeType;
+	typedef RunnerType RunnerType;
+
+	template<typename Runnable, typename... Args>
+	BindStorage(Runnable&& runnable, Args&&... args)
+		:runnable_(runnable)
 	{
-        MakeStore(make_int_parameter_pack<sizeof...(UnboundArgs)>(), method, args...);
+		bound_args_ = std::make_tuple(args...);
 	}
 
-//	// for lamba or function with no params
-//	template<typename T>
-//	BindStorage(T&& function)
-//	{
-//		_runfunc = std::bind(function);
-//	}
-    
-    RunnableFunc _runfunc;
-    
-private:
-    
-    template<int... Is, typename T, typename... Args>
-    void MakeStore(int_parameter_pack<Is...>, T&& method, Args&&... args)
-    {
-        _runfunc = std::bind(method, args..., std::custom_placeholder<Is>()...);
-
-    }
-
+	BoundArgsTuple bound_args_;
+	Runnable runnable_;
 };
 
 

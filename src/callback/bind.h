@@ -59,8 +59,6 @@ c. 弱指针
 
 	// 如果weakFoo所持有的指针已被释放，这里的调用将不会调用闭包的函数
 	// *如果是用其它类型的闭包，则不能进行此类判断*
-	weakFoo.Run();
-
 */
 
 template <typename F, typename...Args>
@@ -73,87 +71,66 @@ struct CallbackTypeTraits<F, TypeList<Args...>>
 };
 
 
-template <bool IsWeakCall, typename Runner, typename F, typename...Args>
+template <bool IsWeakCall, typename Runnable, typename Runner, typename BoundArgTuple, typename...Args>
 struct StorageTypeTraits;
 
-template <bool IsWeakCall, typename Runner, typename F, typename...Args>
-struct StorageTypeTraits<IsWeakCall, Runner, F, TypeList<Args...>>
+template <bool IsWeakCall, typename Runnable, typename Runner, typename BoundArgTuple, typename...Args>
+struct StorageTypeTraits<IsWeakCall, Runnable, Runner, BoundArgTuple, TypeList<Args...>>
 {
     using StorageType = BindStorage<IsWeakCall,
-                                    typename function_traits<F>::return_type,
+                                    typename function_traits<Runnable>::return_type,
+									Runnable,
                                     Runner,
-                                    Args... >;
+									BoundArgTuple>;
 };
 
-template<typename F>
-decltype(auto) Bind(F&& function)
+// 提取示绑定的参数类型
+// UnboundTypeTraits<>::Type 是 Types<...> 类型
+template <typename F, typename... Args>
+struct CallbackParamTraits
 {
-    typedef TypeList<> UnboundTypeList;
-    typedef typename CallbackTypeTraits<F, UnboundTypeList>::Type CallbackType;
+private:
 
-    typedef typename StorageTypeTraits<
-    false,
-    void,
-    F,
-    UnboundTypeList >::StorageType StorageType;
+	static constexpr bool IsMemberMethod = std::is_member_function_pointer<F>::value;
 
-    return CallbackType(new StorageType(function));
-}
+	static constexpr std::size_t BoundSize = RunnerTraits<IsMemberMethod, Args...>::BoundSize;
 
+	// 未绑定的参数个数 = 函数参数个数 - 绑定的参数个数 - 成员函数指针参数
+	static constexpr std::size_t UnBoundTypeSize =
+		function_traits<F>::arity - BoundSize;
+public:
 
-template<typename F, typename... Args>
-typename CallbackTypeTraits<F,
-    typename CallbackParamTraits<F, Args...>::UnboundTypeList >::Type
-Bind(F&& function, const Args&... args)
+	using UnboundTypeList = typename TypeListTraits<UnBoundTypeSize, typename function_traits<F>::tuple_type>::type;
+
+	using RunnerType = typename RunnerTraits<IsMemberMethod, Args...>::RunnerType;
+
+	using BoundArgTuple = typename RunnerTraits<IsMemberMethod, Args...>::RunnableTuple;
+};
+
+template<typename T, typename... Args>
+typename CallbackTypeTraits<typename std::decay<T>::type,
+	typename CallbackParamTraits<typename std::decay<T>::type, Args...>::UnboundTypeList >::Type
+Bind(T func, Args... args)
 {
-    typedef typename CallbackParamTraits<F, Args...>::UnboundTypeList UnboundTypeList;
-    typedef typename CallbackParamTraits<F, Args...>::RunnerType RunnerType;
-    typedef typename CallbackTypeTraits<F, UnboundTypeList>::Type CallbackType;
-        
-    constexpr bool is_weak_call = CallbackParamTraits<F, Args...>::IsWeakCall::value;
+	typedef std::decay<T>::type Runnable;
 
-    typedef typename StorageTypeTraits<
-                    is_weak_call,
-                    RunnerType,
-                    F,
-                    UnboundTypeList >::StorageType StorageType;
-    
-    return CallbackType(new StorageType(function, args...));
-}
+	typedef typename CallbackParamTraits<Runnable, Args...>::UnboundTypeList UnboundTypeList;
+	typedef typename CallbackParamTraits<Runnable, Args...>::RunnerType RunnerType;
+	typedef typename CallbackParamTraits<Runnable, Args...>::BoundArgTuple BoundArgTuple;
+	typedef typename CallbackTypeTraits<Runnable, UnboundTypeList>::Type CallbackType;
+	
+	constexpr bool is_member_call = std::is_member_function_pointer<Runnable>::value;
+
+	typedef typename StorageTypeTraits<
+		is_member_call,
+		Runnable,
+		RunnerType,
+		BoundArgTuple,
+		UnboundTypeList >::StorageType StorageType;
+
+	return CallbackType(new StorageType(func, args...));
+};
 
 typedef Callback<void(void)> Closure;
-
-//template<typename F>
-//decltype(auto) Bind(F&& function)
-//{
-//    // 未绑定的参数个数 = 函数参数个数 - 绑定的参数个数 - 成员函数指针本身
-//    static constexpr std::size_t UnBoundTypeSize = function_traits<F>::arity;
-//
-//    // 未绑定的参数类型
-//    using UnboundTypeList = typename UnboundTypeTraits<UnBoundTypeSize,	typename function_traits<F>::tuple_type>::type;
-//
-//    using IsWeakCall = IsWeakMethod<std::is_member_function_pointer<F>::value, Args...>;
-//    using MethodRunner = typename MethodParamTraits<std::is_member_function_pointer<F>::value, Args...>::Runnertype;
-//
-//    // callback类型
-//    using CallbackType = typename CallbackTraits<IsWeakCall::value, F, MethodRunner, UnboundTypeList>::Type;
-//
-//    // 存储类型
-//    using StorageType = typename CallbackTraits<IsWeakCall::value, F, MethodRunner, UnboundTypeList>::StorageType;
-//
-//    return CallbackType(new StorageType(function, args...));
-//
-//
-////    using ReturnType = typename function_traits<F>::return_type;
-////
-////    using UnboundTypeList = typename UnboundTypeTraits<0, typename function_traits<F>::tuple_type>::type;
-////
-////    using CallbackType = Callback<void()>;
-////
-////    using StorageType = BindStorage<false, void, void >;
-////
-////    return CallbackType(new StorageType(function));
-//}
-
 
 #endif /* __BIND_H__ */
