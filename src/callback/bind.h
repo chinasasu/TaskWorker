@@ -71,20 +71,20 @@ struct CallbackTypeTraits<F, TypeList<Args...>>
 };
 
 
-template <bool IsWeakCall, typename Runnable, typename Runner, typename BoundArgTuple, typename...Args>
+template <bool IsMemberMethod, typename Runnable, typename Runner, typename BoundArgTuple, typename...Args>
 struct StorageTypeTraits;
 
-template <bool IsWeakCall, typename Runnable, typename Runner, typename BoundArgTuple, typename...Args>
-struct StorageTypeTraits<IsWeakCall, Runnable, Runner, BoundArgTuple, TypeList<Args...>>
+template <bool IsMemberMethod, typename Runnable, typename Runner, typename BoundArgTuple, typename...Args>
+struct StorageTypeTraits<IsMemberMethod, Runnable, Runner, BoundArgTuple, TypeList<Args...>>
 {
-    using StorageType = BindStorage<IsWeakCall,
+    using StorageType = BindStorage<IsMemberMethod,
                                     typename function_traits<Runnable>::return_type,
 									Runnable,
                                     Runner,
 									BoundArgTuple>;
 };
 
-// 提取示绑定的参数类型
+// 提取绑定的参数类型
 // UnboundTypeTraits<>::Type 是 Types<...> 类型
 template <typename F, typename... Args>
 struct CallbackParamTraits
@@ -112,7 +112,7 @@ typename CallbackTypeTraits<typename std::decay<T>::type,
 	typename CallbackParamTraits<typename std::decay<T>::type, Args...>::UnboundTypeList >::Type
 Bind(T func, Args... args)
 {
-	typedef std::decay<T>::type Runnable;
+	typedef typename std::decay<T>::type Runnable;
 
 	typedef typename CallbackParamTraits<Runnable, Args...>::UnboundTypeList UnboundTypeList;
 	typedef typename CallbackParamTraits<Runnable, Args...>::RunnerType RunnerType;

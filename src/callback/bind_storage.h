@@ -63,11 +63,10 @@ struct BindStorage;
 template <typename ReturnType, typename Runnable, typename RunnerType, typename BoundArgsTuple>
 struct BindStorage<true, ReturnType, Runnable, RunnerType, BoundArgsTuple> : public BindStorageBase
 {
-	typedef InvokeHelper<true, BindStorage, ReturnType> InvokeType;
-	typedef RunnerType RunnerType;
+	typedef InvokeHelper<true, BindStorage, ReturnType, RunnerType> InvokeType;
 	
-	template<typename Runnable, typename RunnerType, typename... Args>
-	BindStorage(Runnable runnable, RunnerType&& runner, Args&&... args)
+	template<typename T2, typename... Args>
+	BindStorage(Runnable runnable, T2&& runner, Args&&... args)
 		:runnable_(runnable), runner_(runner)
 	{
 		bound_args_ = std::make_tuple(args...);
@@ -82,11 +81,10 @@ struct BindStorage<true, ReturnType, Runnable, RunnerType, BoundArgsTuple> : pub
 template <typename ReturnType, typename Runnable, typename RunnerType, typename BoundArgsTuple>
 struct BindStorage<false, ReturnType, Runnable, RunnerType, BoundArgsTuple> : public BindStorageBase
 {
-	typedef InvokeHelper<false, BindStorage, ReturnType> InvokeType;
-	typedef RunnerType RunnerType;
+	typedef InvokeHelper<false, BindStorage, ReturnType, RunnerType> InvokeType;
 
-	template<typename Runnable, typename... Args>
-	BindStorage(Runnable&& runnable, Args&&... args)
+	template<typename T, typename... Args>
+	BindStorage(T&& runnable, Args&&... args)
 		:runnable_(runnable)
 	{
 		bound_args_ = std::make_tuple(args...);
