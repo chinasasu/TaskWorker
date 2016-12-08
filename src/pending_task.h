@@ -12,26 +12,7 @@
 #include <queue>
 
 #include "callback/bind.h"
-
-class TrackedLocation
-{
-public:
-	TrackedLocation(const char* functionName,
-		const char* fileName,
-		int line,
-		const void* programCounter);
-
-	TrackedLocation();
-
-protected:
-private:
-	const char* _functionName;
-	const char* _fileName;
-	int _lineNumber;
-	const void* _programCounter;
-};
-
-const void* GetProgramCounter();
+#include "tracker.h"
 
 struct PendingTask
 {
@@ -55,15 +36,15 @@ struct PendingTask
 	bool IsDelayTask() const;
 
 	Closure task;
-	TrackedLocation postedFrom;
+	TimerTicks delayedTimeToRun;
 	
-	int sequenceNum;
+	int sequence;
 	bool nestable;
 
-	TimerTicks postedTime;
-	TimerTicks delayedTimeToRun;
+	// for debug
+	TrackedLocation posted_from;
+	TimerTicks posted_time_;
 };
-
 
 class TaskQueue : public std::queue<PendingTask>
 {
@@ -72,15 +53,5 @@ public:
 };
 
 typedef std::priority_queue<PendingTask> DelayedTaskQueue;
-
-
-// Define a macro to record the current source location.
-#define FROM_HERE FROM_HERE_WITH_EXPLICIT_FUNCTION(__FUNCTION__)
-
-#define FROM_HERE_WITH_EXPLICIT_FUNCTION(function_name)                        \
-    TrackedLocation(function_name,                                 \
-                                __FILE__,                                      \
-                                __LINE__,                                      \
-                                GetProgramCounter())
 
 #endif /* __PENDING_TASK_H__ */

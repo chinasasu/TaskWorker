@@ -45,6 +45,8 @@ set(SRC_LIST
 	#message_queue_ui.cpp
 	pending_task.h
 	pending_task.cpp
+	tracker.h
+	tracker.cpp
 	worker_thread.h
 	worker_thread.cpp
 	)

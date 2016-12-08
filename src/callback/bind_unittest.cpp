@@ -8,19 +8,13 @@
 class BindTest : public ::testing::Test 
 {
 public:
-	BindTest() 
+	virtual void SetUp()
 	{
-
 	}
 
-	virtual ~BindTest() {
+	virtual void TearDown()
+	{
 	}
-
-// 	static void VoidFunc0(void) {
-// 		static_func_mock_ptr->VoidMethod0();
-// 	}
-// 
-// 	static int IntFunc0(void) { return static_func_mock_ptr->IntMethod0(); }
 };
 
 class Foo
@@ -115,6 +109,14 @@ TEST_F(BindTest, BindWithLamba)
 
 	Callback<int(int,int)> cb2 = Bind([](int a, int b) { return a + b; });
 	EXPECT_EQ(3, cb2.Run(1, 2));
+
+	int a = 1;
+	int b = 2;
+	Callback<int()> cb3 = Bind([&] { return a + b; });
+	EXPECT_EQ(3, cb3.Run());
+
+	Callback<int(int)> cb4 = Bind([&](int a) { return a + b; });
+	EXPECT_EQ(3, cb4.Run(1));
 }
 
 TEST_F(BindTest, CurryingTest)
