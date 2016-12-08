@@ -35,18 +35,22 @@ set(SRC_LIST
 	base/notification/notification_registrar.cpp
 	base/notification/notification_observer.h
 	base/notification/notification_details.h
-	#win/win_utils.h
-	#win/win_utils.cpp
-	#looper.h
-	#looper.cpp
-	message_queue.h
-	message_queue.cpp
-	#message_queue_ui.h
-	#message_queue_ui.cpp
+	message_queue/message_queue.h
+	message_queue/message_queue.cpp
+	message_queue/message_queue_ui.h
+	message_queue/message_queue_ui.cpp
+	win/win_utils.h
+	win/win_utils.cpp
+	looper.h
+	looper.cpp
 	pending_task.h
 	pending_task.cpp
+	waitable_event.h
+	waitable_event.cpp
 	tracker.h
 	tracker.cpp
+	task_runner.h
+	task_runner.cpp
 	worker_thread.h
 	worker_thread.cpp
 	)

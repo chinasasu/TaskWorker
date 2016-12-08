@@ -8,8 +8,10 @@
 #ifndef __LOOPER_H__
 #define __LOOPER_H__
 #include <thread>
+
+#include "task_runner.h"
 #include "callback/bind.h"
-#include "message_queue.h"
+#include "message_queue/message_queue.h"
 
 class Looper
 {
@@ -25,10 +27,11 @@ public:
 	virtual ~Looper();
 
 	static void Prepare(LooperType loopType = kLoopDefault);
+	static void Reset();
 	static void Clean();
 
 	// block thread
-	static void Loop();
+	static void Loop(bool bQuitWhenIdle = false);
 
 	static Looper* ThisLooper();
 
@@ -41,12 +44,15 @@ public:
 	
 	MessageQueue* GetMessageQueue() { return _mQueue.get(); };
 
+	std::shared_ptr<TaskRunner> task_runner() { return task_runner_; }
+
 	static std::shared_ptr<MessageQueue> CreateMessageQueueForType(LooperType loopType);
 
 protected:
 private:
 
 	std::shared_ptr<MessageQueue> _mQueue;
+	std::shared_ptr<TaskRunner> task_runner_;
 };
 
 #endif /* __LOOPER_H__ */

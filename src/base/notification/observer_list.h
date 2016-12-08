@@ -160,7 +160,7 @@ public:
 	std::weak_ptr<ObserverListBase<ObserverType>> As()
 	{
 		if (!owner_.get())
-			owner_ = std::shared_ptr<ObserverListBase<ObserverType>>(this);
+			owner_ = std::shared_ptr<ObserverListBase<ObserverType>>(this, [](ObserverListBase<ObserverType>*) {});
 
 		return std::weak_ptr<ObserverListBase<ObserverType> >(owner_);
 	}

@@ -9,7 +9,6 @@
 #define __MESSAGE_QUEUE_H__
 
 #include <mutex>
-
 #include "callback/bind.h"
 #include "pending_task.h"
 
@@ -34,6 +33,7 @@ public:
 					 const TimeDelta& delay);
 	void Quit();
 	void QuitWhenIdle();
+	void ResetQuit();
 
 protected:
 	// 执行高优先级任务，在Next取到下一个task之前执行
@@ -55,23 +55,28 @@ protected:
 	bool SwapTask();
 
 private:
+	
+	void ReloadIncomingQueueToWorkQueue();
 	TimerTicks CalcDelyatedRunTime(const TimeDelta& delay);
 
 protected:
 	// 即时任务队列
-	TaskQueue incoming_task_queue_;
+	TaskQueue _incomingTaskQueue;
 	// 当前工作队列
-	TaskQueue work_task_queue_;
+	TaskQueue _workTaskQueue;
 	// 延迟工作队列
-	DelayedTaskQueue delayed_task_queue_;
+	DelayedTaskQueue _delayedTaskQueue;
 
-	std::condition_variable cv_event_;
+	std::condition_variable _cvEvent;
 
 	// 任务递增序号，用于投递时间相同时的排序，保证先进入先执行
 	int next_seq_num_;
 	std::mutex queue_mutex_;
 	bool quitting_;
 	bool quit_when_idle_;
+
+private:
+
 };
 
 #endif /* __MESSAGE_QUEUE_H__ */
