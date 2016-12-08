@@ -74,12 +74,13 @@ add_dependencies(base_unittest
 	)
 
 target_link_libraries(base_unittest PUBLIC
-	"${CMAKE_CURRENT_SOURCE_DIR}/lib/debug/gtest.lib"
+	debug "${CMAKE_SOURCE_DIR}/libraries/debug/gtest.lib"
+	optimized "${CMAKE_SOURCE_DIR}/libraries/release/gtest.lib"
 	base
 	)
 	
 target_include_directories(base_unittest PUBLIC 
-"3rdparty/gtest-1.7.0/include"
+"${CMAKE_SOURCE_DIR}/3rdparty/gtest-1.8.0/include"
 ".")
 
 assign_source_group(${SRC_UNITTEST})
