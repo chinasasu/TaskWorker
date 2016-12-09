@@ -82,7 +82,7 @@ void TaskRunner::PostTaskAndReply(const TrackedLocation& from_here, Closure& tas
 bool TaskRunner::RunTasksOnCurrentThread() const
 {
 	Looper* looper = Looper::ThisLooper();
-	if (looper && looper->GetMessageQueue() == mq_.get())
+	if (looper && looper->GetMessageQueue() == mq_)
 		return true;
 	return false;
 }

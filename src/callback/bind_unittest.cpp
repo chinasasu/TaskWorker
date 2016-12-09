@@ -20,7 +20,7 @@ public:
 class Foo
 {
 public:
-	int DoSum(int a, int b, int c ) { return a + b; };
+	int DoSum(int a, int b, int c ) { return a + b + c; };
 };
 
 int Sum(int a, int b, int c, int d, int e, int f)

@@ -1,7 +1,8 @@
 #include "worker_thread.h"
+
+#include "message_queue/message_queue.h"
 #include "win/win_utils.h"
 #include "waitable_event.h"
-#include "message_queue/message_queue.h"
 #include "looper.h"
 
 
@@ -85,8 +86,6 @@ void WorkerThread::StopSoon()
 
 bool WorkerThread::StartWithOptions(const Options& options)
 {
-	start_options_ = options;
-
 	StartupData startup_data(options);
 	startup_data_ = &startup_data;
 
@@ -109,7 +108,7 @@ bool WorkerThread::RunTasksOnCurrentThread() const
 void WorkerThread::ThreadRun()
 {
 	SetThreadName(GetCurrentThreadId(), thread_name_.c_str());
-	Looper::Prepare((Looper::LooperType)start_options_.loop_type);
+	Looper::Prepare((Looper::LooperType)startup_data_->options.loop_type);
 
 	mq_ = Looper::ThisLooper()->GetMessageQueue();
 	runner_ = Looper::ThisLooper()->task_runner();

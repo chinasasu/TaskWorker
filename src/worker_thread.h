@@ -63,8 +63,6 @@ private:
 	std::thread thread_;
 	MessageQueue* mq_;
 	std::shared_ptr<TaskRunner> runner_;
-
-	Options start_options_;
 };
 
 

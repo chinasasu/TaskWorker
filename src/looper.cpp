@@ -7,9 +7,9 @@
 thread_local static Looper* sThreadLocal = NULL;
 
 Looper::Looper(LooperType loopType /*= kLoopDefault*/)
-	:_mQueue(CreateMessageQueueForType(loopType))
+	:message_queue_(CreateMessageQueueForType(loopType))
 {
-	task_runner_.reset(new TaskRunner(_mQueue));
+	task_runner_.reset(new TaskRunner(message_queue_));
 }
 
 Looper::~Looper()
@@ -41,7 +41,7 @@ void Looper::Clean()
 
 void Looper::Loop(bool bQuitWhenIdle /*= false*/)
 {
-	std::shared_ptr<MessageQueue> mq = Looper::ThisLooper()->_mQueue;
+	std::shared_ptr<MessageQueue> mq = Looper::ThisLooper()->GetMessageQueue();
 	if (bQuitWhenIdle)
 		mq->QuitWhenIdle();
 
@@ -55,6 +55,11 @@ void Looper::Loop(bool bQuitWhenIdle /*= false*/)
 	}
 
 	Clean();
+}
+
+void Looper::LoopUntilIdle()
+{
+	Loop(true);
 }
 
 Looper* Looper::ThisLooper()
@@ -76,26 +81,18 @@ static void QuitLooperWhenIdle()
 		loop->QuitWhenIdle();
 }
 
-Closure Looper::QuitClosure()
-{
-	return Bind(&QuitCurrentLooper);
-}
-
-Closure Looper::QuitWhenIdleClosure()
-{
-	return Bind(&QuitLooperWhenIdle);
-}
-
 void Looper::QuitNow()
 {
-	assert(this == ThisLooper());
-	_mQueue->Quit();
+	message_queue_->EnqueueTask(
+		FROM_HERE,
+		Bind(&MessageQueue::Quit, message_queue_));
 }
 
 void Looper::QuitWhenIdle()
 {
-	assert(this == ThisLooper());
-	_mQueue->QuitWhenIdle();
+	message_queue_->EnqueueTask(
+		FROM_HERE,
+		Bind(&MessageQueue::QuitWhenIdle, message_queue_));
 }
 
 std::shared_ptr<MessageQueue> Looper::CreateMessageQueueForType(LooperType loopType)

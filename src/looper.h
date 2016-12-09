@@ -32,17 +32,15 @@ public:
 
 	// block thread
 	static void Loop(bool bQuitWhenIdle = false);
+	static void LoopUntilIdle();
 
 	static Looper* ThisLooper();
 
-	static Closure QuitClosure();
-	static Closure QuitWhenIdleClosure();
-	
 	// Á¢¼´ÍË³ö
 	void QuitNow();
 	void QuitWhenIdle();
 	
-	MessageQueue* GetMessageQueue() { return _mQueue.get(); };
+	std::shared_ptr<MessageQueue> GetMessageQueue() { return message_queue_; };
 
 	std::shared_ptr<TaskRunner> task_runner() { return task_runner_; }
 
@@ -51,7 +49,7 @@ public:
 protected:
 private:
 
-	std::shared_ptr<MessageQueue> _mQueue;
+	std::shared_ptr<MessageQueue> message_queue_;
 	std::shared_ptr<TaskRunner> task_runner_;
 };
 

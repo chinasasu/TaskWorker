@@ -24,13 +24,12 @@ void WorkThread()
 {
 	int sum = 0;
 
-	Looper::Prepare();
+	Looper::Prepare(Looper::kLoopUI);
 
 	Looper* loop = Looper::ThisLooper();
 	loop->GetMessageQueue()->EnqueueTask(FROM_HERE, Bind(&SumFunc, sum, 10), std::chrono::seconds(30));
-	loop->GetMessageQueue()->EnqueueTask(FROM_HERE, Looper::QuitClosure());
 
-	Looper::Loop();
+	Looper::LoopUntilIdle();
 }
 
 void WorkThreadUI()
@@ -42,19 +41,35 @@ void WorkThreadUI()
 	Looper* loop = Looper::ThisLooper();
 
 	loop->GetMessageQueue()->EnqueueTask(FROM_HERE, Bind(&SumFunc, sum, 10), std::chrono::seconds(5));
-
-	loop->GetMessageQueue()->EnqueueTask(FROM_HERE, Looper::QuitWhenIdleClosure());
-	Looper::Loop();
+	Looper::LoopUntilIdle();
 }
 
 TEST_F(LooperTest, MainTest)
 {
-// 	std::thread t(&WorkThread);
-// 	t.join();
+	int sum = 0;
+
+	Looper::Prepare();
+
+	Looper* loop = Looper::ThisLooper();
+
+	loop->task_runner()->PostDelayedTask(
+		FROM_HERE,
+		Bind(&SumFunc, sum, 10), std::chrono::seconds(30));
+
+	Looper::LoopUntilIdle();
 }
 
 TEST_F(LooperTest, MainTest2)
 {
-// 	std::thread t(&WorkThreadUI);
-// 	t.join();
+	int sum = 0;
+
+	Looper::Prepare();
+
+	Looper* loop = Looper::ThisLooper();
+
+	loop->task_runner()->PostTask(
+		FROM_HERE,
+		Bind(&SumFunc, sum, 10));
+
+	Looper::LoopUntilIdle();
 }

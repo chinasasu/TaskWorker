@@ -52,31 +52,30 @@ protected:
 
 	virtual void ScheduleWork();
 
-	bool SwapTask();
-
 private:
 	
 	void ReloadIncomingQueueToWorkQueue();
 	TimerTicks CalcDelyatedRunTime(const TimeDelta& delay);
+	bool SwapTask();
 
 protected:
-	// 即时任务队列
-	TaskQueue _incomingTaskQueue;
-	// 当前工作队列
-	TaskQueue _workTaskQueue;
-	// 延迟工作队列
-	DelayedTaskQueue _delayedTaskQueue;
 
-	std::condition_variable _cvEvent;
+	// 双缓冲加载队列设计，降低互锁概率，提升批量任务性能
+
+	// 即时任务队列
+	TaskQueue incoming_task_queue_;
+	// 当前工作队列
+	TaskQueue work_task_queue_;
+	// 延迟工作队列
+	DelayedTaskQueue delayed_task_queue_;
+
+	std::condition_variable cv_event_;
 
 	// 任务递增序号，用于投递时间相同时的排序，保证先进入先执行
 	int next_seq_num_;
 	std::mutex queue_mutex_;
 	bool quitting_;
 	bool quit_when_idle_;
-
-private:
-
 };
 
 #endif /* __MESSAGE_QUEUE_H__ */
